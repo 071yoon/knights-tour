@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import LengthComboBox from "@/components/lengthComboBox";
+import LengthComboBox from "@/components/length-combo-box";
 import { useLanguage } from "@/lib/i18n/language-context";
 
 interface BoardControlsProps {
