@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import LengthComboBox from "@/components/lengthComboBox";
+import { useLanguage } from "@/lib/i18n/language-context";
 
 interface BoardControlsProps {
   width: number;
@@ -22,18 +23,24 @@ export function BoardControls({
   onSolve,
   isSolving,
 }: BoardControlsProps) {
+  const { t } = useLanguage();
+
   return (
     <div className="flex items-center gap-2 mb-8 justify-center">
-      <LengthComboBox setLength={setWidth} length={width} label="Width:" />
-      <span className="text-foreground">x</span>
-      <LengthComboBox setLength={setHeight} length={height} label="Height:" />
+      <LengthComboBox setLength={setWidth} length={width} label={t("width")} />
+      <span className="text-foreground">{t("multiplySymbol")}</span>
+      <LengthComboBox
+        setLength={setHeight}
+        length={height}
+        label={t("height")}
+      />
 
       <Button onClick={onReset} variant="outline">
-        Reset Tour
+        {t("resetTour")}
       </Button>
 
       <Button onClick={onSolve} disabled={isSolving} variant="outline">
-        {isSolving ? "Solving..." : "Solve Tour"}
+        {isSolving ? t("solving") : t("solveTour")}
       </Button>
     </div>
   );

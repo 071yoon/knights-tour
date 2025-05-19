@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ChevronsUpDown, Check } from "lucide-react";
+import { useLanguage } from "@/lib/i18n/language-context";
 
 export default function LengthComboBox({
   setLength,
@@ -23,6 +24,8 @@ export default function LengthComboBox({
   length: number;
   label: string;
 }) {
+  const { t } = useLanguage();
+
   return (
     <div className="flex items-center gap-2">
       <label className="text-sm font-medium leading-none dark:text-gray-200">
@@ -42,11 +45,11 @@ export default function LengthComboBox({
         <PopoverContent className="w-[200px] p-0 dark:border-gray-600">
           <Command>
             <CommandInput
-              placeholder="Select size..."
+              placeholder={t("selectSize")}
               className="h-9 dark:text-gray-200"
             />
             <CommandEmpty className="dark:text-gray-400">
-              No size found.
+              {t("noSizeFound")}
             </CommandEmpty>
             <CommandGroup className="dark:text-gray-200">
               {Array.from({ length: 8 }, (_, i) => i + 5).map((size) => (

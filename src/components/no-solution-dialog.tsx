@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useLanguage } from "@/lib/i18n/language-context";
 
 interface NoSolutionDialogProps {
   open: boolean;
@@ -18,13 +19,15 @@ export function NoSolutionDialog({
   open,
   onOpenChange,
 }: NoSolutionDialogProps) {
+  const { t } = useLanguage();
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-popover text-popover-foreground">
         <DialogHeader>
-          <DialogTitle>No Solution Found</DialogTitle>
+          <DialogTitle>{t("noSolutionTitle")}</DialogTitle>
           <DialogDescription className="text-muted-foreground">
-            There is no valid Knight's Tour solution from the current position.
+            {t("noSolutionDesc")}
           </DialogDescription>
         </DialogHeader>
         <div className="flex justify-end mt-4">
@@ -33,7 +36,7 @@ export function NoSolutionDialog({
             onClick={() => onOpenChange(false)}
             className="hover:bg-accent hover:text-accent-foreground"
           >
-            Close
+            {t("close")}
           </Button>
         </div>
       </DialogContent>
