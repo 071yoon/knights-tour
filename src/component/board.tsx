@@ -4,10 +4,30 @@ import { useState, useEffect } from "react";
 import LengthComboBox from "./lengthComboBox";
 import { Button } from "@/components/ui/button";
 import confetti from "canvas-confetti";
+import { Loader2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export default function Board() {
+  const calculateCellSize = (boardWidth: number, boardHeight: number) => {
+    const maxBoardWidth = window.innerWidth * 0.8;
+    const maxBoardHeight = window.innerHeight * 0.6;
+
+    const cellByWidth = Math.floor(maxBoardWidth / boardWidth);
+    const cellByHeight = Math.floor(maxBoardHeight / boardHeight);
+
+    return Math.max(Math.min(cellByWidth, cellByHeight), 30);
+  };
+
   const [width, setWidth] = useState(5);
   const [height, setHeight] = useState(5);
+  const [cellSize, setCellSize] = useState(0); // Start with size 0
+  const [isLoading, setIsLoading] = useState(true);
   const [knightPosition, setKnightPosition] = useState<{
     row: number | null;
     col: number | null;
@@ -18,6 +38,32 @@ export default function Board() {
   );
   const [isSolving, setIsSolving] = useState(false);
   const [solution, setSolution] = useState<{ row: number; col: number }[]>([]);
+  const [showNoSolutionDialog, setShowNoSolutionDialog] = useState(false);
+  const [latestMove, setLatestMove] = useState<{
+    row: number;
+    col: number;
+  } | null>(null);
+
+  // Initialize cell size on client-side only
+  useEffect(() => {
+    setCellSize(calculateCellSize(width, height));
+    setIsLoading(false);
+  }, []); // Run once on mount
+
+  // Update cell size on window resize
+  useEffect(() => {
+    const updateCellSize = () => {
+      setCellSize(calculateCellSize(width, height));
+    };
+
+    window.addEventListener("resize", updateCellSize);
+    return () => window.removeEventListener("resize", updateCellSize);
+  }, [width, height]);
+
+  // Update cell size when board dimensions change
+  useEffect(() => {
+    setCellSize(calculateCellSize(width, height));
+  }, [width, height]);
 
   const getPossibleMoves = (row: number, col: number) => {
     const moves = [
@@ -39,59 +85,224 @@ export default function Board() {
 
   const findSolution = (startRow: number, startCol: number) => {
     const visited = new Set<string>();
-    const path: { row: number; col: number }[] = [];
+    const path: ({ row: number; col: number } | null)[] = [];
+    let existingMoveCount = 0;
 
-    const dfs = (row: number, col: number): boolean => {
-      const key = `${row},${col}`;
+    // Add all existing visited cells to the visited set and path
+    Object.entries(visitedCells).forEach(([key, moveNumber]) => {
       visited.add(key);
-      path.push({ row, col });
+      const [row, col] = key.split(",").map(Number);
+      path[moveNumber - 1] = { row, col };
+      existingMoveCount++;
+    });
 
-      if (visited.size === width * height) {
+    // If we have player moves, we only need to find a path from the last move
+    if (existingMoveCount > 0) {
+      const solve = (row: number, col: number, moveCount: number): boolean => {
+        // If we've completed the tour
+        if (moveCount === width * height) {
+          return true;
+        }
+
+        const moves = getPossibleMoves(row, col).filter(
+          (move) => !visited.has(`${move.row},${move.col}`)
+        );
+
+        for (const move of moves) {
+          visited.add(`${move.row},${move.col}`);
+          path[moveCount] = move;
+
+          if (solve(move.row, move.col, moveCount + 1)) {
+            return true;
+          }
+
+          visited.delete(`${move.row},${move.col}`);
+          path[moveCount] = null;
+        }
+
+        return false;
+      };
+
+      // Start from the last player move
+      if (solve(startRow, startCol, existingMoveCount)) {
+        return path.filter(
+          (p): p is { row: number; col: number } => p !== null
+        );
+      }
+      return null;
+    }
+
+    // For fresh start (no player moves), use the optimized algorithm
+    const accessibility = Array(height)
+      .fill(0)
+      .map(() =>
+        Array(width)
+          .fill(0)
+          .map(() => 0)
+      );
+
+    for (let r = 0; r < height; r++) {
+      for (let c = 0; c < width; c++) {
+        accessibility[r][c] = getPossibleMoves(r, c).length;
+      }
+    }
+
+    const getAccessScore = (row: number, col: number, visited: Set<string>) => {
+      const moves = getPossibleMoves(row, col);
+      let score = 0;
+
+      for (const move of moves) {
+        if (!visited.has(`${move.row},${move.col}`)) {
+          const subMoves = getPossibleMoves(move.row, move.col);
+          const unvisitedSubMoves = subMoves.filter(
+            (m) => !visited.has(`${m.row},${m.col}`)
+          ).length;
+          score += unvisitedSubMoves;
+        }
+      }
+
+      return score;
+    };
+
+    const isNearBorder = (row: number, col: number) => {
+      return row <= 1 || row >= height - 2 || col <= 1 || col >= width - 2;
+    };
+
+    const solveFromScratch = (
+      row: number,
+      col: number,
+      moveCount: number
+    ): boolean => {
+      const key = `${row},${col}`;
+
+      if (visited.has(key)) {
+        return false;
+      }
+
+      visited.add(key);
+      path[moveCount - 1] = { row, col };
+
+      if (moveCount === width * height) {
         return true;
       }
 
-      const moves = getPossibleMoves(row, col);
-      for (const move of moves) {
-        const moveKey = `${move.row},${move.col}`;
-        if (!visited.has(moveKey)) {
-          if (dfs(move.row, move.col)) {
-            return true;
+      const moves = getPossibleMoves(row, col)
+        .filter((move) => !visited.has(`${move.row},${move.col}`))
+        .map((move) => ({
+          ...move,
+          score: getAccessScore(move.row, move.col, visited),
+          nearBorder: isNearBorder(move.row, move.col),
+          baseAccess: accessibility[move.row][move.col],
+        }))
+        .sort((a, b) => {
+          if (a.score !== b.score) return a.score - b.score;
+          if (moveCount < (width * height) / 2) {
+            if (a.nearBorder !== b.nearBorder) return a.nearBorder ? -1 : 1;
           }
+          return a.baseAccess - b.baseAccess;
+        });
+
+      for (const move of moves) {
+        if (solveFromScratch(move.row, move.col, moveCount + 1)) {
+          return true;
         }
       }
 
       visited.delete(key);
-      path.pop();
+      path[moveCount - 1] = null;
       return false;
     };
 
-    if (dfs(startRow, startCol)) {
-      return path;
+    // Try corners first for fresh start
+    const corners = [
+      [0, 0],
+      [0, width - 1],
+      [height - 1, 0],
+      [height - 1, width - 1],
+    ];
+
+    for (const [r, c] of corners) {
+      if (r === startRow && c === startCol) {
+        if (solveFromScratch(r, c, 1)) {
+          return path.filter(
+            (p): p is { row: number; col: number } => p !== null
+          );
+        }
+      }
     }
+
+    // If corner didn't work, try the specified position
+    if (solveFromScratch(startRow, startCol, 1)) {
+      return path.filter((p): p is { row: number; col: number } => p !== null);
+    }
+
     return null;
   };
 
   const solveTour = () => {
-    if (knightPosition.row === null || knightPosition.col === null) {
-      alert("Please place the knight first!");
+    let startRow: number;
+    let startCol: number;
+    let shouldKeepExistingMoves = false;
+
+    if (knightPosition.row !== null && knightPosition.col !== null) {
+      // Continue from current position if knight is placed
+      startRow = knightPosition.row;
+      startCol = knightPosition.col;
+      shouldKeepExistingMoves = true;
+    } else {
+      // Try from (0,0) if no knight is placed
+      startRow = 0;
+      startCol = 0;
+      shouldKeepExistingMoves = false;
+    }
+
+    // Find solution
+    const solution = findSolution(startRow, startCol);
+    if (!solution) {
+      setShowNoSolutionDialog(true);
       return;
     }
 
-    const solution = findSolution(knightPosition.row, knightPosition.col);
-    if (!solution) {
-      alert("No solution exists for this configuration!");
-      return;
+    // If we started from (0,0), now we can safely place the knight
+    if (!shouldKeepExistingMoves) {
+      setKnightPosition({ row: startRow, col: startCol });
+      setVisitedCells({});
+      setMoveCount(0);
     }
+
+    // Filter solution to only include new moves if continuing from existing position
+    const finalSolution = shouldKeepExistingMoves
+      ? solution.filter((pos, index) => {
+          const key = `${pos.row},${pos.col}`;
+          return !visitedCells[key] || visitedCells[key] > index + 1;
+        })
+      : solution;
 
     setIsSolving(true);
-    setSolution(solution);
+    setSolution(finalSolution);
   };
 
   useEffect(() => {
     if (!isSolving || solution.length === 0) return;
 
-    let currentMove = 0;
-    const startingMoveCount = moveCount - 1; // Subtract 1 to account for current position
+    // Make the first move immediately
+    const startingMoveCount = moveCount;
+    const makeMove = (moveIndex: number) => {
+      const move = solution[moveIndex];
+      setKnightPosition({ row: move.row, col: move.col });
+      setVisitedCells((prev) => ({
+        ...prev,
+        [`${move.row},${move.col}`]: startingMoveCount + moveIndex + 1,
+      }));
+      setMoveCount(startingMoveCount + moveIndex + 1);
+      setLatestMove(move);
+    };
+
+    // Execute first move immediately
+    makeMove(0);
+    let currentMove = 1; // Start from second move
+
+    // Set up interval for remaining moves
     const interval = setInterval(() => {
       if (currentMove >= solution.length) {
         setIsSolving(false);
@@ -104,13 +315,7 @@ export default function Board() {
         return;
       }
 
-      const move = solution[currentMove];
-      setKnightPosition({ row: move.row, col: move.col });
-      setVisitedCells((prev) => ({
-        ...prev,
-        [`${move.row},${move.col}`]: startingMoveCount + currentMove + 1,
-      }));
-      setMoveCount(startingMoveCount + currentMove + 1);
+      makeMove(currentMove);
       currentMove++;
     }, 1000);
 
@@ -133,6 +338,7 @@ export default function Board() {
         setKnightPosition({ row: null, col: null });
         setVisitedCells({});
         setMoveCount(0);
+        setLatestMove(null);
         return;
       }
 
@@ -149,6 +355,7 @@ export default function Board() {
       setKnightPosition({ row: prevRow, col: prevCol });
       setVisitedCells(newVisitedCells);
       setMoveCount(moveCount - 1);
+      setLatestMove({ row: prevRow, col: prevCol });
       return;
     }
 
@@ -160,6 +367,7 @@ export default function Board() {
       setKnightPosition({ row, col });
       setVisitedCells({ [`${row},${col}`]: moveCount + 1 });
       setMoveCount(1);
+      setLatestMove({ row, col });
       return;
     }
 
@@ -178,6 +386,7 @@ export default function Board() {
       };
       setVisitedCells(newVisitedCells);
       setMoveCount(moveCount + 1);
+      setLatestMove({ row, col });
 
       // Check if all cells are visited
       if (Object.keys(newVisitedCells).length === width * height) {
@@ -214,56 +423,112 @@ export default function Board() {
           Reset Tour
         </Button>
 
-        <Button
-          onClick={solveTour}
-          disabled={isSolving || knightPosition.row === null}
-        >
+        <Button onClick={solveTour} disabled={isSolving}>
           {isSolving ? "Solving..." : "Solve Tour"}
         </Button>
       </div>
-      <div className="flex flex-col items-center">
-        <div
-          className="grid"
-          style={{
-            gridTemplateColumns: `repeat(${width}, minmax(0, 1fr))`,
-            gridTemplateRows: `repeat(${height}, minmax(0, 1fr))`,
-          }}
-        >
-          {Array.from({ length: width * height }, (_, index) => {
-            const row = Math.floor(index / width);
-            const col = index % width;
-            const isPossibleMove = possibleMoves.some(
-              (move) => move.row === row && move.col === col
-            );
-            const cellKey = `${row},${col}`;
-            const moveNumber = visitedCells[cellKey];
+      <div className="flex flex-col items-center min-h-[50vh] justify-center">
+        {isLoading ? (
+          <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+        ) : (
+          <div
+            className="grid gap-[1px] bg-gray-300"
+            style={{
+              gridTemplateColumns: `repeat(${width}, minmax(0, 1fr))`,
+              gridTemplateRows: `repeat(${height}, minmax(0, 1fr))`,
+            }}
+          >
+            {Array.from({ length: width * height }, (_, index) => {
+              const row = Math.floor(index / width);
+              const col = index % width;
+              const isPossibleMove = possibleMoves.some(
+                (move) => move.row === row && move.col === col
+              );
+              const cellKey = `${row},${col}`;
+              const moveNumber = visitedCells[cellKey];
 
-            return (
-              <div
-                key={index}
-                onClick={() => handleClick(row, col)}
-                className={`w-10 h-10 border border-gray-300 flex items-center justify-center ${
-                  moveNumber || isSolving ? "" : "cursor-pointer"
-                } ${
-                  isPossibleMove && !moveNumber && !isSolving
-                    ? "bg-green-200"
-                    : moveNumber
-                    ? "bg-blue-100"
-                    : "bg-white"
-                }`}
-              >
-                {row === knightPosition.row && col === knightPosition.col ? (
-                  <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm">
-                    {moveNumber}
-                  </div>
-                ) : (
-                  moveNumber && <span className="text-sm">{moveNumber}</span>
-                )}
-              </div>
-            );
-          })}
-        </div>
+              return (
+                <div
+                  key={index}
+                  onClick={() => handleClick(row, col)}
+                  style={{
+                    width: `${cellSize}px`,
+                    height: `${cellSize}px`,
+                  }}
+                  className={`flex items-center justify-center ${
+                    moveNumber || isSolving ? "" : "cursor-pointer"
+                  } ${
+                    isPossibleMove && !moveNumber && !isSolving
+                      ? "bg-emerald-100"
+                      : moveNumber
+                      ? "bg-slate-100"
+                      : "bg-white"
+                  }`}
+                >
+                  {row === knightPosition.row && col === knightPosition.col ? (
+                    <div
+                      className={`rounded-full flex items-center justify-center text-slate-800 font-bold text-lg ${
+                        latestMove &&
+                        latestMove.row === row &&
+                        latestMove.col === col
+                          ? "bg-yellow-200"
+                          : "bg-blue-200"
+                      }`}
+                      style={{
+                        width: `${Math.floor(cellSize * 0.7)}px`,
+                        height: `${Math.floor(cellSize * 0.7)}px`,
+                      }}
+                    >
+                      {moveNumber}
+                    </div>
+                  ) : (
+                    moveNumber && (
+                      <div
+                        className={`rounded-full flex items-center justify-center text-slate-800 font-bold text-lg ${
+                          latestMove &&
+                          latestMove.row === row &&
+                          latestMove.col === col
+                            ? "bg-yellow-200"
+                            : "bg-blue-200"
+                        }`}
+                        style={{
+                          width: `${Math.floor(cellSize * 0.7)}px`,
+                          height: `${Math.floor(cellSize * 0.7)}px`,
+                        }}
+                      >
+                        {moveNumber}
+                      </div>
+                    )
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
+
+      <Dialog
+        open={showNoSolutionDialog}
+        onOpenChange={setShowNoSolutionDialog}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>No Solution Found</DialogTitle>
+            <DialogDescription>
+              There is no valid Knight's Tour solution from the current
+              position.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setShowNoSolutionDialog(false)}
+            >
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
