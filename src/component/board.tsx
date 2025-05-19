@@ -405,91 +405,84 @@ export default function Board() {
       : [];
 
   return (
-    <>
-      <div className="flex items-center gap-2 mb-4 justify-center">
-        <LengthComboBox setLength={setWidth} length={width} label="Width:" />
-        <span>x</span>
-        <LengthComboBox setLength={setHeight} length={height} label="Height:" />
+    <div className="min-h-screen transition-colors duration-300">
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold text-center mb-8 text-foreground">
+          Knight's Tour
+        </h1>
+        <div className="flex items-center gap-2 mb-8 justify-center">
+          <LengthComboBox setLength={setWidth} length={width} label="Width:" />
+          <span className="text-foreground">x</span>
+          <LengthComboBox
+            setLength={setHeight}
+            length={height}
+            label="Height:"
+          />
 
-        <Button
-          onClick={() => {
-            setKnightPosition({ row: null, col: null });
-            setVisitedCells({});
-            setMoveCount(0);
-            setIsSolving(false);
-            setSolution([]);
-          }}
-        >
-          Reset Tour
-        </Button>
-
-        <Button onClick={solveTour} disabled={isSolving}>
-          {isSolving ? "Solving..." : "Solve Tour"}
-        </Button>
-      </div>
-      <div className="flex flex-col items-center min-h-[50vh] justify-center">
-        {isLoading ? (
-          <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-        ) : (
-          <div
-            className="grid gap-[1px] bg-gray-300"
-            style={{
-              gridTemplateColumns: `repeat(${width}, minmax(0, 1fr))`,
-              gridTemplateRows: `repeat(${height}, minmax(0, 1fr))`,
+          <Button
+            onClick={() => {
+              setKnightPosition({ row: null, col: null });
+              setVisitedCells({});
+              setMoveCount(0);
+              setIsSolving(false);
+              setSolution([]);
             }}
+            variant="outline"
           >
-            {Array.from({ length: width * height }, (_, index) => {
-              const row = Math.floor(index / width);
-              const col = index % width;
-              const isPossibleMove = possibleMoves.some(
-                (move) => move.row === row && move.col === col
-              );
-              const cellKey = `${row},${col}`;
-              const moveNumber = visitedCells[cellKey];
+            Reset Tour
+          </Button>
 
-              return (
-                <div
-                  key={index}
-                  onClick={() => handleClick(row, col)}
-                  style={{
-                    width: `${cellSize}px`,
-                    height: `${cellSize}px`,
-                  }}
-                  className={`flex items-center justify-center ${
-                    moveNumber || isSolving ? "" : "cursor-pointer"
-                  } ${
-                    isPossibleMove && !moveNumber && !isSolving
-                      ? "bg-emerald-100"
-                      : moveNumber
-                      ? "bg-slate-100"
-                      : "bg-white"
-                  }`}
-                >
-                  {row === knightPosition.row && col === knightPosition.col ? (
-                    <div
-                      className={`rounded-full flex items-center justify-center text-slate-800 font-bold text-lg ${
-                        latestMove &&
-                        latestMove.row === row &&
-                        latestMove.col === col
-                          ? "bg-yellow-200"
-                          : "bg-blue-200"
-                      }`}
-                      style={{
-                        width: `${Math.floor(cellSize * 0.7)}px`,
-                        height: `${Math.floor(cellSize * 0.7)}px`,
-                      }}
-                    >
-                      {moveNumber}
-                    </div>
-                  ) : (
-                    moveNumber && (
+          <Button onClick={solveTour} disabled={isSolving} variant="outline">
+            {isSolving ? "Solving..." : "Solve Tour"}
+          </Button>
+        </div>
+        <div className="flex flex-col items-center min-h-[50vh] justify-center">
+          {isLoading ? (
+            <Loader2 className="h-8 w-8 animate-spin text-blue-500 dark:text-blue-400" />
+          ) : (
+            <div
+              className="grid gap-[1px] bg-gray-300 dark:bg-gray-600"
+              style={{
+                gridTemplateColumns: `repeat(${width}, minmax(0, 1fr))`,
+                gridTemplateRows: `repeat(${height}, minmax(0, 1fr))`,
+              }}
+            >
+              {Array.from({ length: width * height }, (_, index) => {
+                const row = Math.floor(index / width);
+                const col = index % width;
+                const isPossibleMove = possibleMoves.some(
+                  (move) => move.row === row && move.col === col
+                );
+                const cellKey = `${row},${col}`;
+                const moveNumber = visitedCells[cellKey];
+
+                return (
+                  <div
+                    key={index}
+                    onClick={() => handleClick(row, col)}
+                    style={{
+                      width: `${cellSize}px`,
+                      height: `${cellSize}px`,
+                    }}
+                    className={`flex items-center justify-center ${
+                      moveNumber || isSolving ? "" : "cursor-pointer"
+                    } ${
+                      isPossibleMove && !moveNumber && !isSolving
+                        ? "bg-emerald-100 dark:bg-emerald-900/50"
+                        : moveNumber
+                        ? "bg-slate-100 dark:bg-gray-800"
+                        : "bg-white dark:bg-gray-900"
+                    }`}
+                  >
+                    {row === knightPosition.row &&
+                    col === knightPosition.col ? (
                       <div
-                        className={`rounded-full flex items-center justify-center text-slate-800 font-bold text-lg ${
+                        className={`rounded-full flex items-center justify-center text-slate-800 dark:text-gray-100 font-bold text-lg ${
                           latestMove &&
                           latestMove.row === row &&
                           latestMove.col === col
-                            ? "bg-yellow-200"
-                            : "bg-blue-200"
+                            ? "bg-yellow-200 dark:bg-yellow-300/80"
+                            : "bg-blue-200 dark:bg-blue-300/80"
                         }`}
                         style={{
                           width: `${Math.floor(cellSize * 0.7)}px`,
@@ -498,23 +491,41 @@ export default function Board() {
                       >
                         {moveNumber}
                       </div>
-                    )
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
+                    ) : (
+                      moveNumber && (
+                        <div
+                          className={`rounded-full flex items-center justify-center text-slate-800 dark:text-gray-100 font-bold text-lg ${
+                            latestMove &&
+                            latestMove.row === row &&
+                            latestMove.col === col
+                              ? "bg-yellow-200 dark:bg-yellow-300/80"
+                              : "bg-blue-200 dark:bg-blue-300/80"
+                          }`}
+                          style={{
+                            width: `${Math.floor(cellSize * 0.7)}px`,
+                            height: `${Math.floor(cellSize * 0.7)}px`,
+                          }}
+                        >
+                          {moveNumber}
+                        </div>
+                      )
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
       <Dialog
         open={showNoSolutionDialog}
         onOpenChange={setShowNoSolutionDialog}
       >
-        <DialogContent>
+        <DialogContent className="bg-popover text-popover-foreground">
           <DialogHeader>
             <DialogTitle>No Solution Found</DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-muted-foreground">
               There is no valid Knight's Tour solution from the current
               position.
             </DialogDescription>
@@ -523,12 +534,13 @@ export default function Board() {
             <Button
               variant="outline"
               onClick={() => setShowNoSolutionDialog(false)}
+              className="hover:bg-accent hover:text-accent-foreground"
             >
               Close
             </Button>
           </div>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }

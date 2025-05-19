@@ -12,54 +12,64 @@ import {
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { ChevronsUpDown, Check } from "lucide-react";
 
 export default function LengthComboBox({
   setLength,
   length,
   label,
 }: {
-  setLength: (length: number) => void;
+  setLength: (value: number) => void;
   length: number;
   label: string;
 }) {
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          className="w-[120px] justify-between"
-        >
-          {label} {length}
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[200px] p-0">
-        <Command>
-          <CommandInput placeholder="Enter board height..." />
-          <CommandEmpty>No height found.</CommandEmpty>
-          <CommandGroup>
-            {Array.from({ length: 12 }, (_, i) => i + 1).map((size) => (
-              <CommandItem
-                key={size}
-                value={size.toString()}
-                onSelect={() => {
-                  setLength(size);
-                }}
-              >
-                <Check
-                  className={cn(
-                    "mr-2 h-4 w-4",
-                    length === size ? "opacity-100" : "opacity-0"
-                  )}
-                />
-                {size}
-              </CommandItem>
-            ))}
-          </CommandGroup>
-        </Command>
-      </PopoverContent>
-    </Popover>
+    <div className="flex items-center gap-2">
+      <label className="text-sm font-medium leading-none dark:text-gray-200">
+        {label}
+      </label>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            className="w-[60px] justify-between dark:border-gray-600  dark:text-gray-200 "
+          >
+            {length}
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[200px] p-0 dark:border-gray-600">
+          <Command>
+            <CommandInput
+              placeholder="Select size..."
+              className="h-9 dark:text-gray-200"
+            />
+            <CommandEmpty className="dark:text-gray-400">
+              No size found.
+            </CommandEmpty>
+            <CommandGroup className="dark:text-gray-200">
+              {Array.from({ length: 8 }, (_, i) => i + 5).map((size) => (
+                <CommandItem
+                  key={size}
+                  value={size.toString()}
+                  onSelect={() => {
+                    setLength(size);
+                  }}
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      size === length ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  {size}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </div>
   );
 }
