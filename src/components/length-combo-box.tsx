@@ -45,11 +45,11 @@ export default function LengthComboBox({
         <PopoverContent className="w-[200px] p-0 dark:border-gray-600">
           <Command>
             <CommandInput
-              placeholder={t("selectSize")}
+              placeholder={t("selectSize").toString()}
               className="h-9 dark:text-gray-200"
             />
             <CommandEmpty className="dark:text-gray-400">
-              {t("noSizeFound")}
+              {t("noSizeFound").toString()}
             </CommandEmpty>
             <CommandGroup className="dark:text-gray-200">
               {Array.from({ length: 8 }, (_, i) => i + 5).map((size) => (

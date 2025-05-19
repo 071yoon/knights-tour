@@ -3,10 +3,13 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { translations } from "./translations";
 
+type TranslationKey = keyof (typeof translations)["en-US"];
+type TranslationValue = (typeof translations)["en-US"][TranslationKey];
+
 type LanguageContextType = {
   language: string;
   setLanguage: (lang: string) => void;
-  t: (key: keyof (typeof translations)["en-US"]) => string;
+  t: (key: TranslationKey) => TranslationValue;
 };
 
 const LanguageContext = createContext<LanguageContextType | undefined>(
@@ -42,7 +45,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.lang = lang;
   };
 
-  const t = (key: keyof (typeof translations)["en-US"]): string => {
+  const t = (key: TranslationKey): TranslationValue => {
     return (
       translations[language as keyof typeof translations][key] ||
       translations[DEFAULT_LANGUAGE][key]

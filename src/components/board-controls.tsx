@@ -27,12 +27,16 @@ export function BoardControls({
 
   return (
     <div className="flex items-center gap-2 mb-8 justify-center">
-      <LengthComboBox setLength={setWidth} length={width} label={t("width")} />
-      <span className="text-foreground">{t("multiplySymbol")}</span>
+      <LengthComboBox
+        setLength={setWidth}
+        length={width}
+        label={t("width").toString()}
+      />
+      <span className="text-foreground">{t("multiplySymbol").toString()}</span>
       <LengthComboBox
         setLength={setHeight}
         length={height}
-        label={t("height")}
+        label={t("height").toString()}
       />
 
       <Button onClick={onReset} variant="outline">

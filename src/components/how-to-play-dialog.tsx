@@ -14,7 +14,11 @@ import { Swords } from "lucide-react";
 
 export function HowToPlayDialog() {
   const { t } = useLanguage();
-  const steps = t("howToPlaySteps") as unknown as string[];
+  const steps = t("howToPlaySteps");
+
+  if (!Array.isArray(steps)) {
+    return null;
+  }
 
   return (
     <Dialog>
@@ -35,7 +39,7 @@ export function HowToPlayDialog() {
         </DialogHeader>
         <div className="space-y-4">
           <ol className="list-decimal list-inside space-y-2">
-            {steps.map((step: string, index: number) => (
+            {steps.map((step, index) => (
               <li key={index} className="text-sm">
                 {step}
               </li>
